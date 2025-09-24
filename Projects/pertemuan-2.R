@@ -142,3 +142,68 @@ data_tambah <- data.frame(
 # gabung berdasarkan kolom "id"
 data_combined <- merge(data_main, data_tambah, by = "id")
 data_combined
+
+
+
+
+
+
+
+# ============================================================
+# DATA PREPARATION - Handling Missing Values
+# Dataset: MyAnimeList Anime
+# ============================================================
+
+# Cek jumlah missing values per kolom
+colSums(is.na(data1))
+
+# ============================================================
+# Fungsi bantu untuk cek normalitas (Shapiro-Wilk untuk sample kecil, Kolmogorov/Agostino bisa untuk besar)
+# ============================================================
+is_normal <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) > 5000) {
+    # untuk data besar, ambil sample 5000 saja agar tidak error
+    x <- sample(x, 5000)
+  }
+  pval <- shapiro.test(x)$p.value
+  return(pval > 0.05) # TRUE kalau normal
+}
+
+# ============================================================
+# Penanganan Missing Values
+# ============================================================
+
+data_clean <- data1
+
+for (col in names(data_clean)) {
+  if (any(is.na(data_clean[[col]]))) {
+    
+    # Jika kolom numerik
+    if (is.numeric(data_clean[[col]])) {
+      if (is_normal(data_clean[[col]])) {
+        # Normal distribution → Mean
+        mean_value <- mean(data_clean[[col]], na.rm = TRUE)
+        data_clean[[col]][is.na(data_clean[[col]])] <- mean_value
+      } else {
+        # Not normal → Median
+        median_value <- median(data_clean[[col]], na.rm = TRUE)
+        data_clean[[col]][is.na(data_clean[[col]])] <- median_value
+      }
+      
+    } else {
+      # Jika kolom kategori/factor → Modus
+      uniqv <- na.omit(unique(data_clean[[col]]))
+      mode_value <- uniqv[which.max(tabulate(match(data_clean[[col]], uniqv)))]
+      data_clean[[col]][is.na(data_clean[[col]])] <- mode_value
+    }
+  }
+}
+
+# ============================================================
+# Simpan dataset bersih
+# ============================================================
+write.csv(data_clean, "anime_clean_v1.csv", row.names = FALSE)
+
+# Cek apakah masih ada missing values
+colSums(is.na(data_clean))
